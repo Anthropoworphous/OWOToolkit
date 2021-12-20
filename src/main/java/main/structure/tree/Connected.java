@@ -7,24 +7,31 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @SuppressWarnings({"unused"})
-public class Connected {
+public class Connected implements Cloneable {
     public Connected(IConnectable value) {
         this.value = value;
     }
 
+    //store value that's getting connected
     private IConnectable value;
     public Connected setValue(IConnectable value) { this.value = value; return this; }
     public @Nullable IConnectable getValue() { return value; }
 
+    //fields
     private boolean infertile = false;
     private Connected parent = null;
-    private final List<Connected> child = new ArrayList<>();
+    private List<Connected> child = new ArrayList<>();
 
 //static
     public static Connected root() {
-        return new Connected(null);
+        return new Connected(new IConnectable() {
+            @Override
+            public String toString() {
+                return "ROOT";
+            }
+        });
     }
-    public static List<Connected> getOneWideTreeFromChild(Connected child) {
+    public static List<Connected> getSlimTreeFromChild(Connected child) {
         List<Connected> out = new ArrayList<>();
         do {
             out.add(child);
@@ -34,11 +41,16 @@ public class Connected {
     }
 
 //non-static
-
     //quarry
+    @Override public String toString() {
+        return (isOrphan() ? "null" : parent.value.toString())
+                + " -> " + (value == null ? "null" : value.toString())
+                + " -> [" + child.stream().map(c -> c.value.toString()).collect(Collectors.joining(", "))
+                + "] ";
+    }
     public List<List<IConnectable>> toList() {
         return getChildlessChilds().stream()
-                .map(c -> getOneWideTreeFromChild(c).stream()
+                .map(c -> getSlimTreeFromChild(c).stream()
                         .map(cc -> cc.value)
                         .collect(Collectors.toList()))
                 .collect(Collectors.toList());
@@ -53,29 +65,38 @@ public class Connected {
         return list;
     }
 
-
-        //modify
     /**
      * use a list of filters to check on the family tree layer by layer
-     * @param filters list of filter, uses a different filter every lv
-     * @param lv how deep the loop is in
+     * root is skipped, check start at root's child
+     * @param filters list of filter, uses a different filter every layer
+     * @param hasToReachTheEnd the final layer also have to be childless if true
      * @return all child(of deepest layer the filters can reach)
      * that matched the filter from the top of the family tree
      */
-    public List<Connected> multiLayerFilter(List<Function<IConnectable, Boolean>> filters, int lv) {
-        if (filters.size()-1 == lv) {
-            return Collections.singletonList(this);
-        } else {
-            return child.stream()
-                    .filter(child -> filters.get(lv).apply(child.value))
-                    .flatMap(child -> child.multiLayerFilter(filters, lv+1).stream())
-                    .collect(Collectors.toList());
+    public List<Connected> multiLayerFilter(
+            List<Function<IConnectable, Boolean>> filters, boolean hasToReachTheEnd) {
+        return multiLayerFilter(filters, 0, hasToReachTheEnd);
+    }
+    private List<Connected> multiLayerFilter(
+            List<Function<IConnectable, Boolean>> filters, int lv, boolean hasToReachTheEnd) {
+        List<Connected> output = new ArrayList<>();
+        for (Connected c : child) {
+            if (filters.get(lv).apply(c.value)) {
+                if (lv == filters.size()-1) { //if this is the final loop, return itself all the way to top lv (0)
+                    if (!hasToReachTheEnd || c.isChildless())
+                        output.add(c);
+                } else if (!c.isChildless()) { //if childless + not the end = not enough value to match
+                    output.addAll(c.multiLayerFilter(filters, lv + 1, hasToReachTheEnd));
+                }
+            }
         }
+        return output;
     }
     public List<Connected> allLayerFilter(Function<IConnectable, Boolean> filter, boolean eliminateFailedParent) {
         return child.stream()   //below, filter only apply if eliminateFailedParent is true
                 .filter(child -> !eliminateFailedParent || filter.apply(child.value))
-                .flatMap(child -> child.allLayerFilter(filter, true).stream())
+                .flatMap(child -> child.isChildless() ? this.child.stream() :
+                        child.allLayerFilter(filter, true).stream())
                 .collect(Collectors.toList());
     }
 
@@ -93,10 +114,17 @@ public class Connected {
         return child;
     }
 
+    /**
+     * create similer child using existing instance
+     * make sure the new child is adopted
+     * @param value value of the new child
+     * @return new child
+     */
     public Connected replicate(IConnectable value) {
         return new Connected(value);
     }
 
+    //modify
     public Connected adopt(Connected child) {
         if (!infertile) {
             this.child.add(child.adopted(this));
@@ -197,13 +225,30 @@ public class Connected {
         return this;
     }
 
+    @Override
+    public Connected clone() {
+        Connected clone;
+        try {
+            clone = (Connected) super.clone();
+        } catch (CloneNotSupportedException e) {
+            clone = new Connected(value);
+        }
+        clone.infertile = infertile;
+        clone.parent = parent.clone();
+        clone.child = new ArrayList<>();
+        for (Connected c : child) {
+            Connected childClone = c.clone();
+            clone.child.add(childClone);
+        }
+        return clone;
+    }
+
+
 
     /**
      * empty marker interface
      */
     public interface IConnectable {}
-
-
 
     /**
      * might be wack but hey i tried ok
@@ -214,19 +259,21 @@ public class Connected {
             root = Connected.root();
             branches = new ArrayList<>();
             branches.add(root);
+            enter();
         }
 
         private final Connected root;
         private final List<Connected> branches;
 
         public FamillyTreeBuilder add(IConnectable c) {
-            branches.get(0).adopt(root.replicate(c));
-            branches.set(0, root.replicate(c));
+            Connected child = root.replicate(c);
+            branches.get(0).adopt(child);
+            branches.set(branches.size()-1, child);
             return this;
         }
 
         public FamillyTreeBuilder enter() {
-            branches.add(0, branches.get(0));
+            branches.add(0, branches.get(branches.size()-1));
             return this;
         }
         public FamillyTreeBuilder exit() {
