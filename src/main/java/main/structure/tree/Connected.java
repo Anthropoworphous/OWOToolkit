@@ -41,7 +41,7 @@ public class Connected implements Cloneable {
     }
 
 //non-static
-    //quarry
+    //get
     @Override public String toString() {
         return (isOrphan() ? "null" : parent.value.toString())
                 + " -> " + (value == null ? "null" : value.toString())
@@ -63,6 +63,9 @@ public class Connected implements Cloneable {
                     c.getChildlessChilds());
         }
         return list;
+    }
+    public Connected getParentlessParent() {
+        return isOrphan() ? this : parent.getParentlessParent();
     }
 
     /**
@@ -124,7 +127,7 @@ public class Connected implements Cloneable {
         return new Connected(value);
     }
 
-    //modify
+    //set
     public Connected adopt(Connected child) {
         if (!infertile) {
             this.child.add(child.adopted(this));
@@ -263,12 +266,36 @@ public class Connected implements Cloneable {
         }
 
         private final Connected root;
-        private final List<Connected> branches;
+        private final List<Connected> branches; //0 = current parent, else, order = (child => parent)
 
         public FamillyTreeBuilder add(IConnectable c) {
             Connected child = root.replicate(c);
             branches.get(0).adopt(child);
             branches.set(branches.size()-1, child);
+            return this;
+        }
+
+        public FamillyTreeBuilder addFlat(List<IConnectable> cs) {
+            if (cs == null || cs.size() == 0) { return this; }
+
+            Connected child = null;
+            for (IConnectable c : cs) {
+                child = root.replicate(c);
+                branches.get(0).adopt(child);
+            }
+            branches.set(branches.size()-1, child);
+            return this;
+        }
+        public FamillyTreeBuilder addDeep(List<IConnectable> cs) {
+            if (cs == null || cs.size() == 0) { return this; }
+
+            cs.forEach(c -> {
+                Connected child = root.replicate(c);
+                branches.get(0).adopt(child);
+                branches.set(branches.size()-1, child);
+                enter();
+            });
+            exit();
             return this;
         }
 
