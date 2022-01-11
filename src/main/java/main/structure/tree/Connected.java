@@ -15,6 +15,9 @@ public class Connected implements Cloneable {
     //store value that's getting connected
     private IConnectable value;
     public Connected setValue(IConnectable value) { this.value = value; return this; }
+    @SuppressWarnings("unchecked") public <T> T getValue(Class<T> clazz) {
+        return (T)value;
+    }
     public @Nullable IConnectable getValue() { return value; }
 
     //fields
@@ -244,77 +247,5 @@ public class Connected implements Cloneable {
             clone.child.add(childClone);
         }
         return clone;
-    }
-
-
-
-    /**
-     * empty marker interface
-     */
-    public interface IConnectable {}
-
-    /**
-     * might be wack but hey i tried ok
-     * build connected class tree like the name says
-     */
-    public static class FamillyTreeBuilder {
-        public FamillyTreeBuilder() {
-            root = Connected.root();
-            branches = new ArrayList<>();
-            branches.add(root);
-            enter();
-        }
-
-        private final Connected root;
-        private final List<Connected> branches; //0 = current parent, else, order = (child => parent)
-
-        public FamillyTreeBuilder add(IConnectable c) {
-            Connected child = root.replicate(c);
-            branches.get(0).adopt(child);
-            branches.set(branches.size()-1, child);
-            return this;
-        }
-
-        public FamillyTreeBuilder addFlat(List<IConnectable> cs) {
-            if (cs == null || cs.size() == 0) { return this; }
-
-            Connected child = null;
-            for (IConnectable c : cs) {
-                child = root.replicate(c);
-                branches.get(0).adopt(child);
-            }
-            branches.set(branches.size()-1, child);
-            return this;
-        }
-        public FamillyTreeBuilder addDeep(List<IConnectable> cs) {
-            if (cs == null || cs.size() == 0) { return this; }
-
-            cs.forEach(c -> {
-                Connected child = root.replicate(c);
-                branches.get(0).adopt(child);
-                branches.set(branches.size()-1, child);
-                enter();
-            });
-            exit();
-            return this;
-        }
-
-        public FamillyTreeBuilder enter() {
-            branches.add(0, branches.get(branches.size()-1));
-            return this;
-        }
-        public FamillyTreeBuilder exit() {
-            branches.remove(0);
-            return this;
-        }
-        public FamillyTreeBuilder root() {
-            branches.clear();
-            branches.add(root);
-            return this;
-        }
-
-        public Connected build() {
-            return root;
-        }
     }
 }
