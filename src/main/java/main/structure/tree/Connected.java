@@ -51,11 +51,9 @@ public class Connected implements Cloneable {
                 + " -> [" + child.stream().map(c -> c.value.toString()).collect(Collectors.joining(", "))
                 + "] ";
     }
-    public List<List<IConnectable>> toList() {
+    public List<List<? extends Connected>> toList() {
         return getChildlessChilds().stream()
-                .map(c -> getSlimTreeFromChild(c).stream()
-                        .map(cc -> cc.value)
-                        .collect(Collectors.toList()))
+                .map(Connected::getSlimTreeFromChild)
                 .collect(Collectors.toList());
     }
     public List<Connected> getChildlessChilds() {

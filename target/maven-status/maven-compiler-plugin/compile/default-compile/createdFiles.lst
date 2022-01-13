@@ -1,4 +1,4 @@
 main\structure\tree\Connected.class
 main\structure\tree\Connected$1.class
-main\structure\tree\Connected$FamillyTreeBuilder.class
-main\structure\tree\Connected$IConnectable.class
+main\structure\tree\FamilyTreeBuilder.class
+main\structure\tree\IConnectable.class
