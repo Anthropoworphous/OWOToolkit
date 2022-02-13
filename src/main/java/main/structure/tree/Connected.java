@@ -3,10 +3,11 @@ package main.structure.tree;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@SuppressWarnings({"unused"})
+@SuppressWarnings("unused")
 public class Connected implements Cloneable {
     public Connected(IConnectable value) {
         this.value = value;
@@ -22,8 +23,10 @@ public class Connected implements Cloneable {
 
     //fields
     private boolean infertile = false;
-    private Connected parent = null;
+    private transient Connected parent = null;
     private List<Connected> child = new ArrayList<>();
+    private int generation = 0;
+    //end
 
 //static
     public static Connected root() {
@@ -34,12 +37,14 @@ public class Connected implements Cloneable {
             }
         });
     }
+
     public static List<Connected> getSlimTreeFromChild(Connected child) {
-        List<Connected> out = new ArrayList<>();
-        do {
+        ArrayList<Connected> out;
+
+        for(out = new ArrayList<>(); !child.isOrphan(); child = child.parent) {
             out.add(child);
-            child = child.parent;
-        } while (!child.isOrphan());
+        } out.add(child);
+
         return out;
     }
 
@@ -51,11 +56,26 @@ public class Connected implements Cloneable {
                 + " -> [" + child.stream().map(c -> c.value.toString()).collect(Collectors.joining(", "))
                 + "] ";
     }
-    public List<List<? extends Connected>> toList() {
+
+    public List<List<Connected>> toList() {
         return getChildlessChilds().stream()
                 .map(Connected::getSlimTreeFromChild)
                 .collect(Collectors.toList());
     }
+
+    public List<Set<Connected>> toLayer() {
+        List<Set<Connected>> out = new ArrayList<>();
+
+        childsTask(c -> {
+            for (int i = c.generation - out.size(); i >= 0; i--) {
+                out.add(new HashSet<>());
+            }
+            out.get(c.generation).add(c);
+        });
+
+        return out;
+    }
+
     public List<Connected> getChildlessChilds() {
         List<Connected> list = new ArrayList<>();
         for (Connected c : child) {
@@ -104,17 +124,19 @@ public class Connected implements Cloneable {
                 .collect(Collectors.toList());
     }
 
+
     public boolean isOrphan() {
         return (parent == null);
     }
     public boolean isChildless() {
-        return (child.size() == 0);
+        return (child == null || child.size() == 0);
     }
 
-    public @Nullable Connected getParent() {
-        return parent;
+    public int getGeneration() { return generation; }
+    public Optional<Connected> getParent() {
+        return Optional.of(parent);
     }
-    public @Nullable List<Connected> getChild() {
+    public List<Connected> getChild() {
         return child;
     }
 
@@ -139,17 +161,8 @@ public class Connected implements Cloneable {
     }
     public Connected adopt(List<Connected> child) {
         if (!infertile) {
-            this.child.addAll(child);
             child.forEach(this::adopted);
-        } else {
-            throw new RuntimeException("Parent is infertile, couldn't add child");
-        }
-        return this;
-    }
-    public Connected adopt(Connected... child) {
-        if (!infertile) {
-            this.child.addAll(List.of(child));
-            this.child.forEach(this::adopted);
+            this.child.addAll(child);
         } else {
             throw new RuntimeException("Parent is infertile, couldn't add child");
         }
@@ -179,10 +192,13 @@ public class Connected implements Cloneable {
         }
         return this;
     }
+
     public Connected adopted(Connected parent) {
         this.parent = parent;
+        childsTask(c -> c.generation++);
         return this;
     }
+
     /**
      * quickly create a 1 wide vertical familly tree
      * @param child will get put in the tree with the order of the list
@@ -213,6 +229,7 @@ public class Connected implements Cloneable {
 
     public Connected abandon() {
         parent = null;
+        generation = 0;
         return this;
     }
     public Connected disown(int index) {
@@ -220,13 +237,37 @@ public class Connected implements Cloneable {
         return this;
     }
     public Connected disown(Connected child) {
-        int index = this.child.indexOf(child);
-        this.child.remove(index).abandon();
+        child.abandon();
+        this.child.remove(child);
         return this;
     }
     public Connected neuter(boolean bool) {
         infertile = bool;
         return this;
+    }
+
+    //interaction
+
+    /**
+     * Self inclusive
+     * @param work work
+     */
+    public void parentsWork(Consumer<Connected> work) {
+        if (!isOrphan()) {
+            parent.parentsWork(work);
+        }
+        work.accept(this);
+    }
+
+    /**
+     * Self inclusive
+     * @param task task
+     */
+    public void childsTask(Consumer<Connected> task) {
+        if (!isChildless()) {
+            child.forEach(c -> c.childsTask(task));
+        }
+        task.accept(this);
     }
 
     @Override

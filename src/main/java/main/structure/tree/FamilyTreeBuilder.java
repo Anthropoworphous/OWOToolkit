@@ -24,7 +24,7 @@ public class FamilyTreeBuilder {
     public FamilyTreeBuilder addFlat(List<IConnectable> cs) {
         if (cs == null || cs.size() == 0) { return this; }
 
-        Connected child = null;
+        Connected child = null; //for sure won't be null in the future
         for (IConnectable c : cs) {
             child = root.replicate(c);
             branches.get(0).adopt(child);
