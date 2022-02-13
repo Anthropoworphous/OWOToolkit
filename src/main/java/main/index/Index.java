@@ -1,4 +1,4 @@
-package main.structure.index;
+package main.index;
 
 import org.jetbrains.annotations.NotNull;
 

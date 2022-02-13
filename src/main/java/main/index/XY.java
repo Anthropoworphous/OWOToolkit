@@ -1,4 +1,4 @@
-package main.structure.index;
+package main.index;
 
 public class XY extends Index {
     public XY(int x, int y, int width) {

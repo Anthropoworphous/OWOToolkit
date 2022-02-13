@@ -1,4 +1,4 @@
-package main.structure.index;
+package main.index;
 
 public class ID extends Index {
     public ID(int id) {
