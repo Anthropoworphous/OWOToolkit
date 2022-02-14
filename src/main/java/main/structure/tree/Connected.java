@@ -58,7 +58,7 @@ public class Connected implements Cloneable {
     }
 
     public List<List<Connected>> toList() {
-        return getChildlessChilds().stream()
+        return getChildlessChild().stream()
                 .map(Connected::getSlimTreeFromChild)
                 .collect(Collectors.toList());
     }
@@ -66,7 +66,7 @@ public class Connected implements Cloneable {
     public List<Set<Connected>> toLayer() {
         List<Set<Connected>> out = new ArrayList<>();
 
-        childsTask(c -> {
+        childLabor(c -> {
             for (int i = c.generation - out.size(); i >= 0; i--) {
                 out.add(new HashSet<>());
             }
@@ -76,12 +76,12 @@ public class Connected implements Cloneable {
         return out;
     }
 
-    public List<Connected> getChildlessChilds() {
+    public List<Connected> getChildlessChild() {
         List<Connected> list = new ArrayList<>();
         for (Connected c : child) {
             list.addAll(c.isChildless() ?
                     Collections.singletonList(c) :
-                    c.getChildlessChilds());
+                    c.getChildlessChild());
         }
         return list;
     }
@@ -195,7 +195,7 @@ public class Connected implements Cloneable {
 
     public Connected adopted(Connected parent) {
         this.parent = parent;
-        childsTask(c -> c.generation++);
+        childLabor(c -> c.generation++);
         return this;
     }
 
@@ -263,9 +263,9 @@ public class Connected implements Cloneable {
      * Self inclusive
      * @param task task
      */
-    public void childsTask(Consumer<Connected> task) {
+    public void childLabor(Consumer<Connected> task) {
         if (!isChildless()) {
-            child.forEach(c -> c.childsTask(task));
+            child.forEach(c -> c.childLabor(task));
         }
         task.accept(this);
     }

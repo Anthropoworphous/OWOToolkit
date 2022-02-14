@@ -37,6 +37,12 @@ public class XY extends Index {
     public void width(int width) {
         this.width = width;
     }
+    public void resize(int width) {
+        int index = this.toIndex();
+        this.width = width;
+        x = index % width + 1;
+        y = index / width + 1;
+    }
 
     //xy special move :) 69% less brain cells consuming
     public XY offset(int x, int y) {
