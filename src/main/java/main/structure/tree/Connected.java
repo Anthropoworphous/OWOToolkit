@@ -130,20 +130,15 @@ public class Connected {
         return (child == null || child.size() == 0);
     }
 
-    public int getGeneration() {
-        Connected current = this;
-        int result = 0;
-        while (current.getParent().isPresent()) {
-            current = getParent().get();
-            result++;
-        }
-        return result;
-    }
     public Optional<Connected> getParent() {
-        return Optional.of(parent);
+        return Optional.ofNullable(parent);
     }
     public List<Connected> getChild() {
         return child;
+    }
+
+    public int getGeneration() {
+        return getParent().isPresent() ? parent.getGeneration()+1 : 0;
     }
 
     /**
