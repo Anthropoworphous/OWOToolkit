@@ -8,7 +8,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("unused")
-public class Connected implements Cloneable {
+public class Connected {
     public Connected(IConnectable value) {
         this.value = value;
     }
@@ -22,10 +22,8 @@ public class Connected implements Cloneable {
     public @Nullable IConnectable getValue() { return value; }
 
     //fields
-    private boolean infertile = false;
     private transient Connected parent = null;
     private List<Connected> child = new ArrayList<>();
-    private int generation = 0;
     //end
 
 //static
@@ -67,10 +65,10 @@ public class Connected implements Cloneable {
         List<Set<Connected>> out = new ArrayList<>();
 
         childLabor(c -> {
-            for (int i = c.generation - out.size(); i >= 0; i--) {
+            for (int i = c.getGeneration() - out.size(); i >= 0; i--) {
                 out.add(new HashSet<>());
             }
-            out.get(c.generation).add(c);
+            out.get(c.getGeneration()).add(c);
         });
 
         return out;
@@ -132,7 +130,15 @@ public class Connected implements Cloneable {
         return (child == null || child.size() == 0);
     }
 
-    public int getGeneration() { return generation; }
+    public int getGeneration() {
+        Connected current = this;
+        int result = 0;
+        while (current.getParent().isPresent()) {
+            current = getParent().get();
+            result++;
+        }
+        return result;
+    }
     public Optional<Connected> getParent() {
         return Optional.of(parent);
     }
@@ -152,84 +158,28 @@ public class Connected implements Cloneable {
 
     //set
     public Connected adopt(Connected child) {
-        if (!infertile) {
-            this.child.add(child.adopted(this));
-        } else {
-            throw new RuntimeException("Parent is infertile, couldn't add child");
-        }
+        this.child.add(child.adopted(this));
         return this;
     }
-    public Connected adopt(List<Connected> child) {
-        if (!infertile) {
-            child.forEach(this::adopted);
-            this.child.addAll(child);
-        } else {
-            throw new RuntimeException("Parent is infertile, couldn't add child");
+    public Connected adopt(Connected... child) {
+        for (Connected c : child) {
+            c.adopted(this);
+            this.child.add(c);
         }
         return this;
     }
     public Connected reproduce(IConnectable child) {
-        if (!infertile) {
-            this.child.add(new Connected(child).adopted(this));
-        } else {
-            throw new RuntimeException("Parent is infertile, couldn't add child");
-        }
-        return this;
-    }
-    public Connected reproduce(List<IConnectable> child) {
-        if (!infertile) {
-            child.forEach(c -> this.child.add(new Connected(c).adopted(this)));
-        } else {
-            throw new RuntimeException("Parent is infertile, couldn't add child");
-        }
-        return this;
-    }
-    public Connected reproduce(IConnectable... child) {
-        if (!infertile) {
-            List.of(child).forEach(c -> this.child.add(new Connected(c).adopted(this)));
-        } else {
-            throw new RuntimeException("Parent is infertile, couldn't add child");
-        }
+        this.child.add(new Connected(child).adopted(this));
         return this;
     }
 
     public Connected adopted(Connected parent) {
         this.parent = parent;
-        childLabor(c -> c.generation++);
-        return this;
-    }
-
-    /**
-     * quickly create a 1 wide vertical familly tree
-     * @param child will get put in the tree with the order of the list
-     * @return root
-     */
-    public Connected treeAdopt(List<Connected> child) {
-        Connected current = this;
-        for (Connected c : child) {
-            current.adopt(c);
-            current = c;
-        }
-        return this;
-    }
-    /**
-     * quickly create a 1 wide vertical familly tree
-     * @param child will get put in the tree with the order of the list
-     * @return root
-     */
-    public Connected treeReproduce(List<IConnectable> child) {
-        Connected current = this;
-        for (IConnectable c : child) {
-            Connected connected = new Connected(c);
-            current.adopt(connected);
-            current = connected;
-        }
         return this;
     }
 
     public Connected abandon() {
         parent = null;
-        generation = 0;
         return this;
     }
     public Connected disown(int index) {
@@ -239,10 +189,6 @@ public class Connected implements Cloneable {
     public Connected disown(Connected child) {
         child.abandon();
         this.child.remove(child);
-        return this;
-    }
-    public Connected neuter(boolean bool) {
-        infertile = bool;
         return this;
     }
 
@@ -268,23 +214,5 @@ public class Connected implements Cloneable {
             child.forEach(c -> c.childLabor(task));
         }
         task.accept(this);
-    }
-
-    @Override
-    public Connected clone() {
-        Connected clone;
-        try {
-            clone = (Connected) super.clone();
-        } catch (CloneNotSupportedException e) {
-            clone = new Connected(value);
-        }
-        clone.infertile = infertile;
-        clone.parent = parent.clone();
-        clone.child = new ArrayList<>();
-        for (Connected c : child) {
-            Connected childClone = c.clone();
-            clone.child.add(childClone);
-        }
-        return clone;
     }
 }
