@@ -4,7 +4,7 @@ just some random inefficient java hot garbage that I used to make my code even h
 
 
 here is the funny maven thing
-```xml
+```html
 <dependency>
     <groupId>com.github.anthropoworphous</groupId>
     <artifactId>OWOToolkit</artifactId>
