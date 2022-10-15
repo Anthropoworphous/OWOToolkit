@@ -33,7 +33,7 @@ public class Connected<T> {
 
     //getter and setter
     public void value(T value) { this.value = value; }
-    public Optional<T> value() { return Optional.ofNullable(value); }
+    public T value() { return value; }
     //end
 
     //iteration
@@ -58,15 +58,15 @@ public class Connected<T> {
     //non-static
     //get
     @Override public String toString() {
-        return (isOrphan() ? "null" : parent.value().map(Object::toString).orElse("()"))
-                + " -> " + value().map(Object::toString).orElse("()")
-                + " -> ["
-                + descent().map(set ->
-                set.stream()
-                .map(c -> c.value().map(Object::toString).orElse("()"))
-                .collect(Collectors.joining(", "))
-                ).orElse("null")
-                + "]";
+        return (isOrphan() ? "null" : parent.value()) +
+                " -> " +
+                value() +
+                " -> [" +
+                descent().map(set -> set.stream()
+                        .map(c -> Objects.toString(c.value()))
+                        .collect(Collectors.joining(", ")))
+                        .orElse("null") +
+                "]";
     }
 
     public List<List<Connected<T>>> toList() {
@@ -108,7 +108,7 @@ public class Connected<T> {
      * root is skipped, check start at root's child
      * @param filters list of filter, uses a different filter every layer
      * @param hasToReachTheEnd the final layer also have to be childless if true
-     * @return all child(of deepest layer the filters can reach)
+     * @return all child(of the deepest layer the filters can reach)
      * that matched the filter from the top of the family tree
      */
     public List<Connected<T>> multiLayerFilter(List<Predicate<T>> filters, boolean hasToReachTheEnd) {
